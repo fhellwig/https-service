@@ -22,7 +22,10 @@ const strformat = require('strformat');
 
 const JSON_MEDIA_TYPE = 'application/json';
 const FORM_MEDIA_TYPE = 'application/x-www-form-urlencoded';
+
 const CONTENT_TYPE_HEADER = 'content-type';
+const CONTENT_LENGTH_HEADER = 'content-length';
+
 const slice = Array.prototype.slice;
 
 //------------------------------------------------------------------------------
@@ -50,17 +53,27 @@ function appendQuery(path, query) {
     return path;
 }
 
-function contentType(headers) {
+function headerValue(headers, name) {
     if (util.isObject(headers)) {
         let keys = Object.keys(headers);
         for (let i = 0, n = keys.length; i < n; i++) {
             let key = keys[i];
-            if (key.toLowerCase() === CONTENT_TYPE_HEADER) {
+            if (key.toLowerCase() === name) {
                 return headers[key].toLowerCase();
             }
         }
     }
     return null;
+}
+
+function removeParams(value) {
+    if (value) {
+        let semi = value.indexOf(';');
+        if (semi > 0) {
+            return value.substring(0, semi);
+        }
+    }
+    return value;
 }
 
 //------------------------------------------------------------------------------
@@ -125,8 +138,8 @@ class HttpsService {
         method = method.toUpperCase();
         headers = headers || {};
         if (data !== null) {
-            if (util.isObject(data)) {
-                let type = contentType(headers);
+            if (util.isObject(data) && !Buffer.isBuffer(data)) {
+                let type = headerValue(headers, CONTENT_TYPE_HEADER);
                 switch (type) {
                     case JSON_MEDIA_TYPE:
                         data = JSON.stringify(data);
@@ -139,8 +152,11 @@ class HttpsService {
                         data = JSON.stringify(data);
                         break;
                     default:
-                        throw new Error('Unsuported media type: ' + type);
+                        throw new Error('Unsuported media type (cannot serialize object): ' + type);
                 }
+            }
+            if (util.isString(data) && headerValue(headers, CONTENT_LENGTH_HEADER) === null) {
+                headers[CONTENT_LENGTH_HEADER] = Buffer.byteLength(data);
             }
         }
         let options = {
@@ -160,13 +176,7 @@ class HttpsService {
                     return callback(null, null, null, response.headers);
                 }
                 let body = Buffer.concat(chunks);
-                let type = response.headers[CONTENT_TYPE_HEADER];
-                if (type) {
-                    let semi = type.indexOf(';');
-                    if (semi > 0) {
-                        type = type.substring(0, semi);
-                    }
-                }
+                let type = removeParams(headerValue(response.headers, CONTENT_TYPE_HEADER));
                 if (method === 'HEAD') {
                     body = null;
                 } else if (type === 'application/json') {
@@ -204,7 +214,7 @@ class HttpsService {
             if (util.isString(data) || Buffer.isBuffer(data)) {
                 request.write(data);
             } else {
-                throw new Error('Invalid request data: ' + (typeof data));
+                throw new Error('Invalid request data (must be string or Buffer): ' + (typeof data));
             }
         }
         request.end();

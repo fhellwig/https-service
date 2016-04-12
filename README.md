@@ -50,7 +50,7 @@ service.request(method, path, headers, data, callback)
 
 Sends an HTTPS request to the host specified in the constructor.
 
-- The `method` should be one of `GET`, `HEAD`, `OPTIONS`, `TRACE`, `POST`, `PUT`, or `DELETE`. The method is converted to upper case.
+- The `method` should be one of `GET`, `HEAD`, `OPTIONS`, `TRACE`, `POST`, `PUT`, `PATCH` or `DELETE`. The method is converted to upper case.
 - The `path` identifies the resource with respect to the host specified in the constructor.
 - The `headers` must be an object or `null`.
 - The `data` specifies the message body and can be a `Buffer`, a string, or an object. If the `data` parameter is an object, then it is processed as follows:
