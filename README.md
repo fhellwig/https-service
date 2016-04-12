@@ -69,32 +69,33 @@ service.get(path, [query,] callback)
 service.head(path, [query,] callback)
 ```
 
-Convenience methods for `GET` and `HEAD` requests. If the optional `query` object is specified, it is serialized and appended to the `path` preceded by a `?`. If the `path` already contains query parameters, then it is appended with a `&`.
+Convenience methods for `GET` and `HEAD` requests. If the optional `query` object is specified, it is serialized and appended to the `path` preceded by a `?`. If the `path` already contains a query, then it is appended with a `&`.
 
-### 3.4 post, put
+### 3.4 post, put, patch
 
 ```javascript
-service.post(path, [headers,] data, callback)
-service.put(path, [headers,] data, callback)
+service.post(path, data, callback)
+service.put(path, data, callback)
+service.patch(path, data, callback)
 ```
 
-Convenience methods for `POST` and `PUT` requests. The `headers` argument is optional and can be `null` or omitted.
+Convenience methods for the `POST`, `PUT`, and `PATCH` requests.
 
 ### 3.5 delete
 
 ```javascript
-service.delete(path, [headers,] callback)
+service.delete(path, callback)
 ```
 
-Convenience method for the `DELETE` request. The `headers` argument is optional and can be `null` or omitted.
+Convenience method for the `DELETE` request.
 
-### 3.6 json, form
+### 3.6 Media Types
 
-The static `types` object provides the following two media type constants:
+There are two static media type constants on the HttpsService class:
 
 ```javascript
-HttpsService.types.JSON = 'application/json';
-HttpsService.types.FORM = 'application/x-www-form-urlencoded';
+HttpsService.JSON_MEDIA_TYPE = 'application/json';
+HttpsService.FORM_MEDIA_TYPE = 'application/x-www-form-urlencoded';
 ```
 
 ## 4. License
