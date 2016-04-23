@@ -2,6 +2,8 @@
 
 A wrapper around the node https request method.
 
+Version 1.0.2
+
 ## 1. Installation
 
 ```bash

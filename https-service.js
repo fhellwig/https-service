@@ -11,10 +11,10 @@
 //------------------------------------------------------------------------------
 
 const https = require('https');
+const HttpsError = require('https-error');
 const url = require('url');
 const util = require('util');
 const querystring = require('querystring');
-const strformat = require('strformat');
 
 //------------------------------------------------------------------------------
 // Initialization
@@ -32,14 +32,9 @@ const slice = Array.prototype.slice;
 // Private
 //------------------------------------------------------------------------------
 
-class ServiceError extends Error {
-    constructor(options, code /* , ...message */ ) {
-        let req = strformat('{method} https://{host}:{port}{path}', options);
-        let msg = strformat.apply(null, slice.call(arguments, 2));
-        super(strformat('{0} {1} {2}', req, code, msg));
-        this.code = code;
-        this.name = 'ServiceError';
-    }
+function httpsError(code, opt, msg) {
+    msg = `[${opt.method} https://${opt.host}:${opt.port}${opt.path}] ${msg}`;
+    return new HttpsError(code, msg);
 }
 
 function appendQuery(path, query) {
@@ -175,34 +170,37 @@ class HttpsService {
                 if (response.statusCode === 204) {
                     return callback(null, null, null, response.headers);
                 }
-                let body = Buffer.concat(chunks);
+                let code = response.statusCode;
                 let type = removeParams(headerValue(response.headers, CONTENT_TYPE_HEADER));
+                let body = Buffer.concat(chunks);
                 if (method === 'HEAD') {
                     body = null;
                 } else if (type === 'application/json') {
                     body = body.toString();
                     if (!body) {
-                        return callback(new ServiceError(options, 502, 'Empty Response'));
+                        return callback(httpsError(502, options, 'Empty Response'));
                     }
                     try {
                         body = JSON.parse(body);
                     } catch (e) {
-                        return callback(new ServiceError(options, 502, e.message));
+                        return callback(httpsError(502, options, e.message));
                     }
                     // Sometimes Microsoft returns an error description.
                     if (body.error_description) {
                         let message = body.error_description.split(/\r?\n/)[0];
-                        return callback(new ServiceError(options, response.statusCode, message));
+                        return callback(httpsError(code, options, message));
                     }
                     // Other times Microsoft returns an error object.
                     if (body.error && body.error.message) {
-                        return callback(new ServiceError(options, response.statusCode, body.error.message));
+                        return callback(httpsError(code, options, body.error.message));
                     }
                 } else if (type.startsWith('text/') || type.endsWith('+xml')) {
                     body = body.toString();
                 }
-                if (response.statusCode !== 200) {
-                    return callback(new ServiceError(options, response.statusCode, response.statusMessage));
+                let success = code === 200 || code === 204;
+                if (!success) {
+                    return callback(httpsError(response.statusCode, options,
+                        'The request was not successfully completed.'));
                 }
                 callback(null, body, type, response.headers);
             });
