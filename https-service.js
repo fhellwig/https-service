@@ -201,7 +201,7 @@ class HttpsService {
                 } else if (type.startsWith('text/') || type.endsWith('+xml')) {
                     body = body.toString();
                 }
-                let success = code === 200 || code === 204;
+                let success = code === 200 || code === 201;
                 if (!success) {
                     return callback(httpsError(response.statusCode, options,
                         'The request was not successfully completed.'));
