@@ -194,6 +194,10 @@ class HttpsService {
                     if (body.error && body.error.message) {
                         return callback(httpsError(code, options, body.error.message));
                     }
+                    // It could be an odata error.
+                    if (body['odata.error'] && body['odata.error'].message) {
+                        return callback(httpsError(code, options, body['odata.error'].message.value));
+                    }
                 } else if (type.startsWith('text/') || type.endsWith('+xml')) {
                     body = body.toString();
                 }

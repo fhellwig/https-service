@@ -1,6 +1,6 @@
 {
   "name": "https-service",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "A wrapper around the node https request method.",
   "main": "https-service.js",
   "scripts": {
