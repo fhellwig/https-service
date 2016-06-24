@@ -2,7 +2,7 @@
 
 A wrapper around the node https request method.
 
-Version 1.0.5
+Version 1.0.6
 
 ## 1. Installation
 

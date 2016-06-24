@@ -54,7 +54,7 @@ function headerValue(headers, name) {
         for (let i = 0, n = keys.length; i < n; i++) {
             let key = keys[i];
             if (key.toLowerCase() === name) {
-                return headers[key].toLowerCase();
+                return headers[key];
             }
         }
     }
