@@ -194,8 +194,6 @@ class HttpsService {
       if (!type) {
         throw new Error('The content-type must be specified for binary data.');
       }
-      data = data.toString('base64');
-      headers[CONTENT_TYPE_HEADER] = `${removeParams(type)};base64`;
       headers[CONTENT_LENGTH_HEADER] = data.length;
     } else if (typeof data === 'string') {
       if (!headerValue(headers, CONTENT_TYPE_HEADER)) {

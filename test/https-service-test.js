@@ -47,7 +47,7 @@ describe('https-service', function() {
       const buf = Buffer.from('hello');
       return service.post('/post', buf, 'text/plain').then(response => {
         assert.strictEqual(response.code, 200);
-        assert.deepStrictEqual(response.data.data, buf.toString('base64'));
+        assert.deepStrictEqual(response.data.data, 'hello');
       });
     });
   });
