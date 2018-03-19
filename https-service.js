@@ -32,11 +32,6 @@ const slice = Array.prototype.slice;
 // Private
 //------------------------------------------------------------------------------
 
-function httpsError(code, opt, msg) {
-  msg = `[${opt.method} https://${opt.host}:${opt.port}${opt.path}] ${msg}`;
-  return new HttpsError(code, msg);
-}
-
 function appendQuery(path, query) {
   if (util.isObject(query)) {
     query = querystring.stringify(query);
@@ -128,7 +123,7 @@ function sendRequest(options, dataToSend = null) {
           data = body.toString();
         }
         if (code >= 400) {
-          return reject(httpsError(code, response.statusMessage));
+          return reject(new HttpsError(code, response.statusMessage));
         }
         resolve({ code, headers, type, data });
       });
@@ -142,6 +137,7 @@ function sendRequest(options, dataToSend = null) {
     request.end();
   });
 }
+
 //------------------------------------------------------------------------------
 // Public
 //------------------------------------------------------------------------------
@@ -171,15 +167,15 @@ class HttpsService {
     return this.request('HEAD', path, null, null);
   }
 
-  post(path, data, type) {
+  post(path, data, type = null) {
     return this.request('POST', path, { 'content-type': type }, data);
   }
 
-  put(path, data, type) {
+  put(path, data, type = null) {
     return this.request('PUT', path, { 'content-type': type }, data);
   }
 
-  patch(path, data, type) {
+  patch(path, data, type = null) {
     return this.request('PATCH', path, { 'content-type': type }, data);
   }
 
@@ -194,15 +190,15 @@ class HttpsService {
       headers = removeHeader(headers, CONTENT_TYPE_HEADER);
       headers = removeHeader(headers, CONTENT_LENGTH_HEADER);
     } else if (Buffer.isBuffer(data)) {
-      const type = headerValue(CONTENT_TYPE_HEADER);
+      const type = headerValue(headers, CONTENT_TYPE_HEADER);
       if (!type) {
         throw new Error('The content-type must be specified for binary data.');
       }
-      data = Buffer.toString('base64');
+      data = data.toString('base64');
       headers[CONTENT_TYPE_HEADER] = `${removeParams(type)};base64`;
       headers[CONTENT_LENGTH_HEADER] = data.length;
     } else if (typeof data === 'string') {
-      if (!headerValue(CONTENT_TYPE_HEADER)) {
+      if (!headerValue(headers, CONTENT_TYPE_HEADER)) {
         headers[CONTENT_TYPE_HEADER] = 'text/plain';
       }
       headers[CONTENT_LENGTH_HEADER] = Buffer.byteLength(data);
@@ -222,6 +218,7 @@ class HttpsService {
         default:
           throw new Error(`Unsuported content-type (${type}) - cannot serialize object.`);
       }
+      headers[CONTENT_LENGTH_HEADER] = Buffer.byteLength(data);
     }
     let options = {
       method: method,

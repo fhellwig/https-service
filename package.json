@@ -4,16 +4,13 @@
   "description": "A wrapper around the node https request method.",
   "main": "https-service.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "mocha --timeout 10000"
   },
   "repository": {
     "type": "git",
     "url": "https://github.com/fhellwig/https-service.git"
   },
-  "keywords": [
-    "https",
-    "service"
-  ],
+  "keywords": ["https", "service"],
   "author": "Frank Hellwig",
   "license": "MIT",
   "bugs": {
@@ -22,5 +19,8 @@
   "homepage": "https://github.com/fhellwig/https-service",
   "dependencies": {
     "https-error": "^1.0.2"
+  },
+  "devDependencies": {
+    "mocha": "^5.0.4"
   }
 }
