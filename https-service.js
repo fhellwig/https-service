@@ -11,7 +11,6 @@
 //------------------------------------------------------------------------------
 
 const https = require('https');
-const httpsRequest = require('./https-request');
 const HttpsError = require('https-error');
 const url = require('url');
 const util = require('util');
@@ -50,16 +49,26 @@ function appendQuery(path, query) {
 }
 
 function headerValue(headers, name) {
-  if (util.isObject(headers)) {
-    let keys = Object.keys(headers);
-    for (let i = 0, n = keys.length; i < n; i++) {
-      let key = keys[i];
-      if (key.toLowerCase() === name) {
-        return headers[key];
-      }
+  if (headers === null) return null;
+  name = name.toLowerCase();
+  for (const [key, value] of Object.entries(headers)) {
+    if (key.toLowerCase() === name) {
+      return value;
     }
   }
   return null;
+}
+
+function removeHeader(headers, name) {
+  if (headers === null) return null;
+  name = name.toLowerCase();
+  const retval = {};
+  for (const [key, value] of Object.entries(headers)) {
+    if (key.toLowerCase() !== name) {
+      retval[key] = value;
+    }
+  }
+  return retval;
 }
 
 function removeParams(value) {
@@ -72,6 +81,67 @@ function removeParams(value) {
   return value;
 }
 
+function sendRequest(options, dataToSend = null) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    const request = https.request(options, response => {
+      response.on('data', chunk => {
+        chunks.push(chunk);
+      });
+      response.on('end', _ => {
+        const code = response.statusCode;
+        const headers = response.headers;
+        let type = null;
+        let data = null;
+        if (code === 204) {
+          return resolve({ code, headers, type, data });
+        }
+        type = removeParams(headerValue(headers, CONTENT_TYPE_HEADER));
+        if (options.method === 'HEAD') {
+          return resolve({ code, headers, type, data });
+        }
+        const body = Buffer.concat(chunks);
+        if (type === JSON_MEDIA_TYPE) {
+          const json = body.toString();
+          if (!json) {
+            return reject(HttpsError.internalServerError('Server returned an empty response.'));
+          }
+          try {
+            data = JSON.parse(json);
+          } catch (e) {
+            return reject(HttpsError.internalServerError(`Cannot parse response (${e.message}).`));
+          }
+          // Sometimes Microsoft returns an error description.
+          if (data.error_description) {
+            let message = data.error_description.split(/\r?\n/)[0];
+            return reject(new HttpsError(code, message));
+          }
+          // Other times Microsoft returns an error object.
+          if (data.error && data.error.message) {
+            return reject(new HttpsError(code, body.error.message));
+          }
+          // It could be an odata error.
+          if (data['odata.error'] && data['odata.error'].message) {
+            return reject(new HttpsError(code, data['odata.error'].message.value));
+          }
+        } else if (type.startsWith('text/') || type.endsWith('+xml')) {
+          data = body.toString();
+        }
+        if (code >= 400) {
+          return reject(httpsError(code, response.statusMessage));
+        }
+        resolve({ code, headers, type, data });
+      });
+    });
+    request.on('error', err => {
+      reject(err);
+    });
+    if (dataToSend !== null) {
+      request.write(dataToSend);
+    }
+    request.end();
+  });
+}
 //------------------------------------------------------------------------------
 // Public
 //------------------------------------------------------------------------------
@@ -101,16 +171,16 @@ class HttpsService {
     return this.request('HEAD', path, null, null);
   }
 
-  post(path, data, callback) {
-    return this.request('POST', path, null, data);
+  post(path, data, type) {
+    return this.request('POST', path, { 'content-type': type }, data);
   }
 
-  put(path, data, callback) {
-    return this.request('PUT', path, null, data);
+  put(path, data, type) {
+    return this.request('PUT', path, { 'content-type': type }, data);
   }
 
-  patch(path, data) {
-    return this.request('PATCH', path, null, data);
+  patch(path, data, type) {
+    return this.request('PATCH', path, { 'content-type': type }, data);
   }
 
   delete(path) {
@@ -120,26 +190,37 @@ class HttpsService {
   request(method, path, headers, data) {
     method = method.toUpperCase();
     headers = headers || {};
-    if (data !== null) {
-      if (util.isObject(data) && !Buffer.isBuffer(data)) {
-        let type = headerValue(headers, CONTENT_TYPE_HEADER);
-        switch (type) {
-          case JSON_MEDIA_TYPE:
-            data = JSON.stringify(data);
-            break;
-          case FORM_MEDIA_TYPE:
-            data = querystring.stringify(data);
-            break;
-          case null:
-            headers[CONTENT_TYPE_HEADER] = JSON_MEDIA_TYPE;
-            data = JSON.stringify(data);
-            break;
-          default:
-            throw new Error(`Unsuported content-type (${type}) - cannot serialize object.`);
-        }
+    if (data === null) {
+      headers = removeHeader(headers, CONTENT_TYPE_HEADER);
+      headers = removeHeader(headers, CONTENT_LENGTH_HEADER);
+    } else if (Buffer.isBuffer(data)) {
+      const type = headerValue(CONTENT_TYPE_HEADER);
+      if (!type) {
+        throw new Error('The content-type must be specified for binary data.');
       }
-      if (util.isString(data) && headerValue(headers, CONTENT_LENGTH_HEADER) === null) {
-        headers[CONTENT_LENGTH_HEADER] = Buffer.byteLength(data);
+      data = Buffer.toString('base64');
+      headers[CONTENT_TYPE_HEADER] = `${removeParams(type)};base64`;
+      headers[CONTENT_LENGTH_HEADER] = data.length;
+    } else if (typeof data === 'string') {
+      if (!headerValue(CONTENT_TYPE_HEADER)) {
+        headers[CONTENT_TYPE_HEADER] = 'text/plain';
+      }
+      headers[CONTENT_LENGTH_HEADER] = Buffer.byteLength(data);
+    } else {
+      const type = removeParams(headerValue(headers, CONTENT_TYPE_HEADER));
+      switch (type) {
+        case JSON_MEDIA_TYPE:
+          data = JSON.stringify(data);
+          break;
+        case FORM_MEDIA_TYPE:
+          data = querystring.stringify(data);
+          break;
+        case null:
+          headers[CONTENT_TYPE_HEADER] = JSON_MEDIA_TYPE;
+          data = JSON.stringify(data);
+          break;
+        default:
+          throw new Error(`Unsuported content-type (${type}) - cannot serialize object.`);
       }
     }
     let options = {
@@ -149,7 +230,7 @@ class HttpsService {
       path: path,
       headers: headers
     };
-    return httpsRequest.sendRequest(options, data);
+    return sendRequest(options, data);
   }
 }
 

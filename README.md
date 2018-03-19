@@ -81,9 +81,9 @@ Convenience methods for `GET` and `HEAD` requests. If the optional `query` objec
 ### 3.4 post, put, patch
 
 ```javascript
-service.post(path, data);
-service.put(path, data);
-service.patch(path, data);
+service.post(path, data [, type]);
+service.put(path, data [, type]);
+service.patch(path, data [, type]);
 ```
 
 Convenience methods for the `POST`, `PUT`, and `PATCH` requests.
