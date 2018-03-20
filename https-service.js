@@ -121,6 +121,8 @@ function sendRequest(options, dataToSend = null) {
           }
         } else if (type.startsWith('text/') || type.endsWith('+xml')) {
           data = body.toString();
+        } else {
+          data = body;
         }
         if (code >= 400) {
           return reject(new HttpsError(code, response.statusMessage));
