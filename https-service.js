@@ -113,7 +113,7 @@ function sendRequest(options, dataToSend = null) {
           }
           // Other times Microsoft returns an error object.
           if (data.error && data.error.message) {
-            return reject(new HttpsError(code, body.error.message));
+            return reject(new HttpsError(code, data.error.message));
           }
           // It could be an odata error.
           if (data['odata.error'] && data['odata.error'].message) {
