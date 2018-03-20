@@ -188,7 +188,10 @@ class HttpsService {
   request(method, path, headers, data) {
     method = method.toUpperCase();
     headers = headers || {};
-    if (data === null) {
+    if (data === null || typeof data === 'undefined') {
+      if (['POST', 'PUT', 'PATCH'].includes(method)) {
+        throw new Error(`The ${method} method requires that data be specified.`);
+      }
       headers = removeHeader(headers, CONTENT_TYPE_HEADER);
       headers = removeHeader(headers, CONTENT_LENGTH_HEADER);
     } else if (Buffer.isBuffer(data)) {
@@ -202,7 +205,7 @@ class HttpsService {
         headers[CONTENT_TYPE_HEADER] = 'text/plain';
       }
       headers[CONTENT_LENGTH_HEADER] = Buffer.byteLength(data);
-    } else {
+    } else if (typeof data === 'object') {
       const type = removeParams(headerValue(headers, CONTENT_TYPE_HEADER));
       switch (type) {
         case JSON_MEDIA_TYPE:
@@ -219,6 +222,8 @@ class HttpsService {
           throw new Error(`Unsuported content-type (${type}) - cannot serialize object.`);
       }
       headers[CONTENT_LENGTH_HEADER] = Buffer.byteLength(data);
+    } else {
+      throw new Error(`Don't know how to handle data of type ${typeof data}.`)
     }
     let options = {
       method: method,

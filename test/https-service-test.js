@@ -51,6 +51,20 @@ describe('https-service', function() {
       });
     });
   });
+  describe('post', function() {
+    it('should result in an error for a POST request without data', function() {
+      assert.throws(_ => {
+        service.post('/post', null, 'text/plain');
+      });
+    });
+  });
+  describe('post', function() {
+    it('should result in an error for a POST request with invalid data', function() {
+      assert.throws(_ => {
+        service.post('/post', 1, 'text/plain');
+      });
+    });
+  });
   describe('put', function() {
     it('should send a PUT request to the server', function() {
       return service.put('/put', DATA).then(response => {
