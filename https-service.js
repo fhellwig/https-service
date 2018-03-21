@@ -11,9 +11,7 @@
 //------------------------------------------------------------------------------
 
 const https = require('https');
-const HttpsError = require('https-error');
 const url = require('url');
-const util = require('util');
 const querystring = require('querystring');
 
 //------------------------------------------------------------------------------
@@ -22,6 +20,7 @@ const querystring = require('querystring');
 
 const JSON_MEDIA_TYPE = 'application/json';
 const FORM_MEDIA_TYPE = 'application/x-www-form-urlencoded';
+const TEXT_MEDIA_TYPE = 'text/plain';
 
 const CONTENT_TYPE_HEADER = 'content-type';
 const CONTENT_LENGTH_HEADER = 'content-length';
@@ -33,12 +32,14 @@ const slice = Array.prototype.slice;
 //------------------------------------------------------------------------------
 
 function appendQuery(path, query) {
-  if (util.isObject(query)) {
-    query = querystring.stringify(query);
-  }
-  if (util.isString(query)) {
-    let sep = path.indexOf('?') < 0 ? '?' : '&';
-    return path + sep + query;
+  if (query) {
+    if (isObject(query)) {
+      query = querystring.stringify(query);
+    }
+    if (isString(query)) {
+      let sep = path.indexOf('?') < 0 ? '?' : '&';
+      return path + sep + query;
+    }
   }
   return path;
 }
@@ -76,6 +77,40 @@ function removeParams(value) {
   return value;
 }
 
+function isObject(x) {
+  return typeof x === 'object';
+}
+
+function isString(x) {
+  return typeof x === 'string';
+}
+
+function errorMessage(type, data) {
+  if (data !== null) {
+    if (type === JSON_MEDIA_TYPE && isObject(data)) {
+      // Sometimes Microsoft returns an error description.
+      if (isString(data.error_description)) {
+        return data.error_description.split(/\r?\n/)[0];
+      }
+      // Other times Microsoft returns an error object.
+      if (data.error && isString(data.error.message)) {
+        return data.error.message;
+      }
+      // It could be an odata error.
+      if (data['odata.error'] && isString(data['odata.error'].message)) {
+        return data['odata.error'].message.value;
+      }
+      // Finally, let's just check for a regular message propery.
+      if (isString(data.message)) {
+        return data.message;
+      }
+    } else if (type === TEXT_MEDIA_TYPE && isString(data)) {
+      return data;
+    }
+  }
+  return null;
+}
+
 function sendRequest(options, dataToSend = null) {
   return new Promise((resolve, reject) => {
     const chunks = [];
@@ -86,48 +121,41 @@ function sendRequest(options, dataToSend = null) {
       response.on('end', _ => {
         const code = response.statusCode;
         const headers = response.headers;
-        let type = null;
+        const type = removeParams(headerValue(headers, CONTENT_TYPE_HEADER));
         let data = null;
         if (code === 204) {
           return resolve({ code, headers, type, data });
         }
-        type = removeParams(headerValue(headers, CONTENT_TYPE_HEADER));
-        if (options.method === 'HEAD') {
+        if (chunks.length > 0) {
+          const body = Buffer.concat(chunks);
+          if (type === JSON_MEDIA_TYPE) {
+            const json = body.toString();
+            if (!json) {
+              return reject(new Error('Server returned an empty response.'));
+            }
+            try {
+              data = JSON.parse(json);
+            } catch (e) {
+              return reject(new Error(`Cannot parse response (${e.message}).`));
+            }
+          } else if (type.startsWith('text/') || type.endsWith('+xml')) {
+            data = body.toString();
+          } else {
+            data = body;
+          }
+        }
+        if (code < 400) {
           return resolve({ code, headers, type, data });
         }
-        const body = Buffer.concat(chunks);
-        if (type === JSON_MEDIA_TYPE) {
-          const json = body.toString();
-          if (!json) {
-            return reject(HttpsError.internalServerError('Server returned an empty response.'));
-          }
-          try {
-            data = JSON.parse(json);
-          } catch (e) {
-            return reject(HttpsError.internalServerError(`Cannot parse response (${e.message}).`));
-          }
-          // Sometimes Microsoft returns an error description.
-          if (data.error_description) {
-            let message = data.error_description.split(/\r?\n/)[0];
-            return reject(new HttpsError(code, message));
-          }
-          // Other times Microsoft returns an error object.
-          if (data.error && data.error.message) {
-            return reject(new HttpsError(code, data.error.message));
-          }
-          // It could be an odata error.
-          if (data['odata.error'] && data['odata.error'].message) {
-            return reject(new HttpsError(code, data['odata.error'].message.value));
-          }
-        } else if (type.startsWith('text/') || type.endsWith('+xml')) {
-          data = body.toString();
+        let message = errorMessage(type, data);
+        if (message === null) {
+          message = `${code} (${response.statusMessage})`;
         } else {
-          data = body;
+          message = `${code} (${response.statusMessage}) ${message}`;
         }
-        if (code >= 400) {
-          return reject(new HttpsError(code, response.statusMessage));
-        }
-        resolve({ code, headers, type, data });
+        let err = new Error(message);
+        err.code = code;
+        reject(err);
       });
     });
     request.on('error', err => {
@@ -200,12 +228,12 @@ class HttpsService {
         throw new Error('The content-type must be specified for binary data.');
       }
       headers[CONTENT_LENGTH_HEADER] = data.length;
-    } else if (typeof data === 'string') {
+    } else if (isString(data)) {
       if (!headerValue(headers, CONTENT_TYPE_HEADER)) {
-        headers[CONTENT_TYPE_HEADER] = 'text/plain';
+        headers[CONTENT_TYPE_HEADER] = TEXT_MEDIA_TYPE;
       }
       headers[CONTENT_LENGTH_HEADER] = Buffer.byteLength(data);
-    } else if (typeof data === 'object') {
+    } else if (isObject(data)) {
       const type = removeParams(headerValue(headers, CONTENT_TYPE_HEADER));
       switch (type) {
         case JSON_MEDIA_TYPE:
@@ -223,7 +251,7 @@ class HttpsService {
       }
       headers[CONTENT_LENGTH_HEADER] = Buffer.byteLength(data);
     } else {
-      throw new Error(`Don't know how to handle data of type ${typeof data}.`)
+      throw new Error(`Don't know how to handle data of type ${typeof data}.`);
     }
     let options = {
       method: method,

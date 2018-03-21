@@ -2,7 +2,7 @@
 
 A wrapper around the node https request method.
 
-Version 2.0.6
+Version 2.0.7
 
 ## 1. Installation
 
@@ -98,7 +98,7 @@ Convenience method for the `DELETE` request.
 
 ### 3.6 Media Types
 
-There are two static media type constants on the HttpsService class:
+There are three static media type constants on the HttpsService class:
 
 ```javascript
 HttpsService.JSON_MEDIA_TYPE = 'application/json';
