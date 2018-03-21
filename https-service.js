@@ -108,7 +108,7 @@ function errorMessage(type, data) {
       return data;
     }
   }
-  return null;
+  return 'No additional information is available.';
 }
 
 function sendRequest(options, dataToSend = null) {
@@ -147,13 +147,7 @@ function sendRequest(options, dataToSend = null) {
         if (code < 400) {
           return resolve({ code, headers, type, data });
         }
-        let message = errorMessage(type, data);
-        if (message === null) {
-          message = `${code} (${response.statusMessage})`;
-        } else {
-          message = `${code} (${response.statusMessage}) ${message}`;
-        }
-        let err = new Error(message);
+        const err = new Error(errorMessage(type, data));
         err.code = code;
         reject(err);
       });
