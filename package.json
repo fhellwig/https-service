@@ -1,6 +1,6 @@
 {
   "name": "https-service",
-  "version": "2.0.7",
+  "version": "2.0.8",
   "description": "A wrapper around the node https request method.",
   "main": "https-service.js",
   "scripts": {
@@ -20,9 +20,7 @@
     "url": "https://github.com/fhellwig/https-service/issues"
   },
   "homepage": "https://github.com/fhellwig/https-service",
-  "dependencies": {
-    "https-error": "^1.0.2"
-  },
+  "dependencies": {},
   "devDependencies": {
     "mocha": "^5.0.4"
   }
