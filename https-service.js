@@ -59,7 +59,7 @@ function removeHeader(headers, name) {
   if (headers === null) return null;
   name = name.toLowerCase();
   const retval = {};
-  for (key of Object.keys(headers)) {
+  for (const key of Object.keys(headers)) {
     if (key.toLowerCase() !== name) {
       retval[key] = headers[key];
     }
