@@ -47,9 +47,9 @@ function appendQuery(path, query) {
 function headerValue(headers, name) {
   if (headers === null) return null;
   name = name.toLowerCase();
-  for (const [key, value] of Object.entries(headers)) {
+  for (const key of Object.keys(headers)) {
     if (key.toLowerCase() === name) {
-      return value;
+      return headers[key];
     }
   }
   return null;
@@ -59,9 +59,9 @@ function removeHeader(headers, name) {
   if (headers === null) return null;
   name = name.toLowerCase();
   const retval = {};
-  for (const [key, value] of Object.entries(headers)) {
+  for (key of Object.keys(headers)) {
     if (key.toLowerCase() !== name) {
-      retval[key] = value;
+      retval[key] = headers[key];
     }
   }
   return retval;
