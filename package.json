@@ -1,8 +1,8 @@
 {
   "name": "https-service",
-  "version": "2.1.1",
+  "version": "2.1.2",
   "description": "A wrapper around the node https request method.",
-  "main": "https-service.js",
+  "main": "lib/https-service.js",
   "scripts": {
     "test": "mocha --timeout 10000"
   },

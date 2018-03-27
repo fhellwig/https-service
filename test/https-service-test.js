@@ -1,6 +1,6 @@
 'use strict';
 
-const HttpsService = require('../https-service');
+const HttpsService = require('../lib/https-service');
 const assert = require('assert');
 
 const service = new HttpsService('httpbin.org');
